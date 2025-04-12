@@ -115,7 +115,7 @@ body {
 
 .author-credit {
     text-align: center;
-    font-size: 0.9em;
+    font-size: 1em;
     color: #6c757d; /* Muted grey text */
     margin-bottom: 25px; /* Add some space below it */
     font-style: italic;

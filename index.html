@@ -308,7 +308,7 @@ sudo ufw enable</code></pre>
                     </ul>
 
                     <h3>Conclusion</h3>
-                    <p>This guide provides a comprehensive, tailored approach to deploying your Wazuh manager on Ubuntu 24.04 LTS. You’ll have a secure, internet-facing setup with custom ransomware detection, Sysmon integration, and efficient agent deployment via Group Policy and scripting.</p>
+                    <p>Whichever options you choose, this guide will be of great help. Enjoy!</p>
                 </section>
             </div>
 
@@ -622,7 +622,7 @@ sudo systemctl start wazuh-agent</code></pre>
                         <li><strong>Test Rules and AR:</strong> Carefully simulate conditions that should trigger your custom rules (e.g., create a dummy file with a <code>.INC</code> extension on a test machine). Check the Wazuh Dashboard for alerts. Verify that the Active Response script executed as expected by checking its log file (<code>/var/ossec/logs/active-responses.log</code> on the manager if <code>location=local</code>).</li>
                         <li><strong>Monitor:</strong> Regularly check the Wazuh dashboard for alerts, monitor agent statuses, and review Wazuh manager logs (<code>/var/ossec/logs/ossec.log</code>) for any errors.</li>
                     </ul>
-                    <p>This procedure provides a robust starting point. Remember to adapt the specific rule logic, AR scripts, and deployment details precisely to your environment.</p>
+                    <p>This is also another way to deploy the wazuh manager, but whichever is most convenient for you.</p>
                 </section>
             </div>
         </div></div>
