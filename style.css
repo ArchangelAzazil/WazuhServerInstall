@@ -1,0 +1,227 @@
+/* Basic Reset & Global Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Open Sans', sans-serif;
+    line-height: 1.7;
+    color: #495057; /* Dark Grey for text */
+    background-color: #f8f9fa; /* Very light grey background */
+    padding: 20px;
+}
+
+.container {
+    max-width: 1000px; /* Slightly wider for better layout */
+    margin: 30px auto;
+    padding: 35px 40px;
+    background-color: #ffffff; /* White container background */
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Softer shadow */
+    border: 1px solid #dee2e6; /* Subtle border */
+}
+
+/* Login Section */
+#login-section h1 {
+    text-align: center;
+    margin-bottom: 15px;
+    color: #628ECB; /* Pastel Blue heading */
+    font-weight: 600;
+}
+
+#login-section p {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #6c757d; /* Muted grey text */
+}
+
+#login-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#login-form label {
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #495057;
+}
+
+#login-form input[type="email"] {
+    width: 100%;
+    max-width: 450px;
+    padding: 14px;
+    margin-bottom: 20px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#login-form input[type="email"]:focus {
+    border-color: #80bdff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(160, 196, 255, 0.5); /* Pastel blue focus glow */
+}
+
+
+#login-form button {
+    padding: 14px 30px;
+    background-color: #A0C4FF; /* Pastel Blue */
+    color: #343a40; /* Darker text for contrast on light blue */
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.05rem;
+    font-weight: 600;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+}
+
+#login-form button:hover {
+    background-color: #8AB4F8; /* Slightly darker blue on hover */
+    transform: translateY(-1px); /* Subtle lift */
+}
+
+.error {
+    color: #e63946; /* Soft Red for errors */
+    font-weight: 600;
+    margin-top: 20px;
+    text-align: center;
+    padding: 10px;
+    background-color: #fdecea; /* Very light red background */
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    width: 100%;
+    max-width: 450px;
+}
+
+/* Instructions Section */
+#instructions-section h1 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #495057;
+    font-weight: 600;
+}
+
+/* Options Navigation Buttons */
+#options-nav {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 15px;
+}
+
+.option-button {
+    padding: 12px 25px;
+    margin: 0 8px;
+    background-color: #f1f3f5; /* Light grey default */
+    color: #495057;
+    border: 1px solid #dee2e6;
+    border-radius: 20px; /* Pill shape */
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.option-button:hover {
+    background-color: #e9ecef; /* Slightly darker grey on hover */
+    border-color: #adb5bd;
+}
+
+.option-button.active {
+    background-color: #A0C4FF; /* Pastel Blue active */
+    color: #343a40;
+    border-color: #8AB4F8; /* Slightly darker blue border */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Instruction Content Styling */
+#instruction-content-area {
+    margin-top: 20px;
+}
+
+.instruction-content h2 {
+    color: #628ECB; /* Pastel Blue H2 */
+    margin-top: 10px; /* Reduced top margin as it's within toggled content */
+    margin-bottom: 20px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e9ecef; /* Lighter border */
+    font-weight: 600;
+}
+
+.instruction-content h3 {
+    color: #7BB5A7; /* Pastel Teal/Green H3 */
+    margin-top: 25px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.instruction-content h4 {
+    color: #9099A2; /* Muted Grey H4 */
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-weight: 600;
+    /* Removed italics for cleaner look */
+}
+
+.instruction-content p,
+.instruction-content li {
+    margin-bottom: 12px;
+    color: #495057;
+}
+
+.instruction-content ul,
+.instruction-content ol {
+    margin-left: 30px;
+    margin-bottom: 18px;
+    padding-left: 10px; /* Add padding for better alignment */
+}
+
+.instruction-content strong {
+    font-weight: 600; /* Slightly less heavy than default bold */
+    color: #343a40;
+}
+
+.instruction-content code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; /* Monospace font stack */
+    background-color: #e9ecef; /* Light background for inline code */
+    padding: 0.2em 0.5em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #c7254e; /* Muted pink/red for inline code */
+}
+
+.instruction-content pre {
+    background-color: #f1f3f5; /* Slightly different light grey for blocks */
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 18px;
+    margin: 18px 0;
+    overflow-x: auto;
+    white-space: pre;
+    font-size: 0.9em;
+    line-height: 1.5; /* Better line spacing for code */
+}
+
+.instruction-content pre code {
+    background-color: transparent;
+    padding: 0;
+    border: none;
+    font-size: inherit;
+    color: #343a40; /* Dark grey code text */
+    white-space: inherit; /* Important for wrapping within pre */
+}
+
+/* Utility Classes */
+.hidden {
+    display: none;
+}
+/* Removed empty .active ruleset */
+
+/* Ensure instruction-content that is active is displayed */
+.instruction-content.active {
+    display: block;
+}

@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wazuh Deployment Instructions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="login-section" class="container">
+        <h1>Wazuh Deployment Instructions Access</h1>
+        <p>Please enter your ELC Consulting email address to view the instructions.</p>
+        <form id="login-form">
+            <label for="email">Email Address:</label>
+            <input type="email" id="email" name="email" required placeholder="your.name@elcconsulting.com">
+            <button type="submit">Login</button>
+            <p id="error-message" class="error hidden"></p>
+        </form>
+    </div>
+
+    <div id="instructions-section" class="container hidden">
+        <h1>Wazuh Server Deployment Instructions</h1>
+
+        <div id="options-nav">
+            <button id="btn-option1" class="option-button active">Option 1</button>
+            <button id="btn-option2" class="option-button">Option 2</button>
+        </div>
+
+        <div id="instruction-content-area">
+            <div id="option1-content" class="instruction-content active">
+                <section id="option1">
+                    <h2>Option 1: Wazuh Manager Deployment Guide for Your SOC Team</h2>
+                    <p>I’ve crafted a step-by-step guide for deploying a Wazuh manager on your Ubuntu 24.04 LTS server...</p>
+                    <h3>Overview</h3>
+                    <ul>
+                        <li><strong>Environment:</strong> Ubuntu 24.04 LTS VM on Hyper-V (8GB RAM, 4 cores, 100GB HD)</li>
+                        <li><strong>Wazuh Installation:</strong> Assisted installation script (on-prem data center deployment)</li>
+                        <li><strong>Agents:</strong> 100 endpoints (90 Windows, 10 Ubuntu Linux)</li>
+                        <li><strong>Custom Requirements:</strong>
+                            <ul>
+                                <li>Custom rules for Lynx, Sosano, and INC ransomware with active response</li>
+                                <li>Default Sysmon configuration for Windows agents</li>
+                                <li>Internet-facing Wazuh manager with static IP, FQDN, and Nginx reverse proxy</li>
+                                <li>Agents connect via company VPN</li>
+                                <li>Agent deployment via Group Policy (Windows) and scripting (Linux)</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <h3>Step 1: Set Up the Ubuntu 24.04 LTS VM</h3>
+                    <h4>Hardware Considerations:</h4>
+                    <p>Your VM is configured with 8GB RAM, 4 cores, and 100GB HD. This should suffice for 100 agents, but Wazuh recommends 16GB RAM for larger deployments. Monitor resource usage post-deployment and consider upgrading if performance lags. Ensure the VM is connected to your company VPN for agent communication.</p>
+                    <h4>Action:</h4>
+                    <ol>
+                        <li>Install Ubuntu 24.04 LTS on the Hyper-V VM.</li>
+                        <li>Assign a static IP (e.g., 192.168.1.100) to the VM and verify it’s accessible from the VPN network.</li>
+                    </ol>
+
+                    <h3>Step 2: Install Wazuh Using the Assisted Installation Script</h3>
+                    <p><strong>Why:</strong> The assisted installation script streamlines the setup of the Wazuh manager, indexer, and dashboard.</p>
+                    <h4>Action:</h4>
+                    <ol>
+                        <li>SSH into the Ubuntu VM as a user with sudo privileges.</li>
+                        <li>Download and execute the Wazuh installation script:
+                            <pre><code class="language-bash">curl -sO https://packages.wazuh.com/4.7/wazuh-install.sh
+bash wazuh-install.sh --generate-config-files
+bash wazuh-install.sh --wazuh-indexer
+bash wazuh-install.sh --wazuh-server
+bash wazuh-install.sh --wazuh-dashboard</code></pre>
+                        </li>
+                        <li>Follow the on-screen prompts to complete the installation.</li>
+                        <li>Save the generated admin credentials for the Wazuh dashboard (displayed at the end of the installation).</li>
+                    </ol>
+                    <h4>Additional Configuration:</h4>
+                    <p>Verify that the Wazuh manager’s network settings allow access from the VPN.</p>
+
+                    <h3>Step 3: Configure Nginx as a Reverse Proxy</h3>
+                    <p><strong>Why:</strong> Nginx enhances security and enables access to the Wazuh dashboard via an FQDN over HTTPS.</p>
+                    <h4>Action:</h4>
+                    <ol>
+                        <li>Install Nginx:
+                            <pre><code class="language-bash">sudo apt update && sudo apt install nginx -y</code></pre>
+                        </li>
+                        <li>Create an Nginx configuration file for Wazuh:
+                            <pre><code class="language-bash">sudo nano /etc/nginx/sites-available/wazuh.conf</code></pre>
+                        </li>
+                        <li>Add the following configuration (replace <code>wazuh.example.com</code> with your FQDN):
+                            <pre><code class="language-nginx">server {
+    listen 80;
+    server_name wazuh.example.com;
+
+    location / {
+        proxy_pass http://localhost:5601; # Default Wazuh Dashboard port
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}</code></pre>
+                        </li>
+                        <li>Enable the configuration and restart Nginx:
+                            <pre><code class="language-bash">sudo ln -s /etc/nginx/sites-available/wazuh.conf /etc/nginx/sites-enabled/
+sudo systemctl restart nginx</code></pre>
+                        </li>
+                    </ol>
+                    <h4>SSL Setup (Highly Recommended):</h4>
+                    <ol>
+                        <li>Obtain an SSL certificate (e.g., using Let’s Encrypt with certbot):
+                            <pre><code class="language-bash">sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d wazuh.example.com</code></pre>
+                        </li>
+                        <li>Follow the prompts to configure HTTPS, updating the Nginx config to listen on port 443.</li>
+                    </ol>
+
+
+                    <h3>Step 4: Set Up the FQDN for the Wazuh Manager</h3>
+                    <p><strong>Why:</strong> An FQDN simplifies agent connections and dashboard access.</p>
+                    <h4>Action:</h4>
+                    <ol>
+                        <li>Update your DNS records to map <code>wazuh.example.com</code> to the Wazuh manager’s static IP (e.g., 192.168.1.100).</li>
+                        <li>Alternatively, if DNS updates aren’t feasible, edit the <code>/etc/hosts</code> file on each agent:
+                            <pre><code class="language-text">192.168.1.100 wazuh.example.com</code></pre>
+                        </li>
+                        <li>Verify connectivity from an agent on the VPN: <code>ping wazuh.example.com</code>.</li>
+                    </ol>
+
+                    <h3>Step 5: Configure Custom Rules for Ransomware</h3>
+                    <p><strong>Why:</strong> Tailored rules enhance detection of specific ransomware threats (Lynx, Sosano, INC).</p>
+                    <h4>Action:</h4>
+                    <ol>
+                        <li><strong>Create Custom Decoders and Rules:</strong>
+                            <ul>
+                                <li>Navigate to the decoders directory:
+                                    <pre><code class="language-bash">sudo nano /var/ossec/etc/decoders/local_decoder.xml</code></pre>
+                                </li>
+                                <li>Add decoders for ransomware-specific log patterns (adjust based on your log sources).</li>
+                                <li>Navigate to the rules directory:
+                                    <pre><code class="language-bash">sudo nano /var/ossec/etc/rules/local_rules.xml</code></pre>
+                                </li>
+                                <li>Add rules for each ransomware type (example):
+                                    <pre><code class="language-xml">&lt;group name="ransomware,"&gt;
+    &lt;rule id="100001" level="12"&gt;
+        &lt;if_sid&gt;65000&lt;/if_sid&gt; &lt;!-- Replace with relevant parent rule ID --&gt;
+        &lt;match&gt;lynx ransomware&lt;/match&gt;
+        &lt;description&gt;Detected Lynx ransomware activity&lt;/description&gt;
+        &lt;mitre&gt;
+            &lt;id&gt;T1486&lt;/id&gt; &lt;!-- Data Destruction --&gt;
+        &lt;/mitre&gt;
+    &lt;/rule&gt;
+
+    &lt;rule id="100002" level="12"&gt;
+        &lt;if_sid&gt;65000&lt;/if_sid&gt;
+        &lt;match&gt;sosano ransomware&lt;/match&gt;
+        &lt;description&gt;Detected Sosano ransomware activity&lt;/description&gt;
+        &lt;mitre&gt;
+            &lt;id&gt;T1486&lt;/id&gt;
+        &lt;/mitre&gt;
+    &lt;/rule&gt;
+
+    &lt;rule id="100003" level="12"&gt;
+        &lt;if_sid&gt;65000&lt;/if_sid&gt;
+        &lt;match&gt;inc ransomware&lt;/match&gt;
+        &lt;description&gt;Detected INC ransomware activity&lt;/description&gt;
+        &lt;mitre&gt;
+            &lt;id&gt;T1486&lt;/id&gt;
+        &lt;/mitre&gt;
+    &lt;/rule&gt;
+&lt;/group&gt;</code></pre>
+                                </li>
+                            </ul>
+                        </li>
+                        <li><strong>Integrate Active Response:</strong>
+                            <ul>
+                                <li>Create or use an active response script (e.g., <code>block_ip.sh</code>) in <code>/var/ossec/active-response/bin/</code>.</li>
+                                <li>Configure active response in <code>/var/ossec/etc/ossec.conf</code>:
+                                    <pre><code class="language-xml">&lt;active-response&gt;
+    &lt;command&gt;block_ip&lt;/command&gt;
+    &lt;location&gt;local&lt;/location&gt;
+    &lt;rules_id&gt;100001,100002,100003&lt;/rules_id&gt;
+&lt;/active-response&gt;</code></pre>
+                                </li>
+                            </ul>
+                        </li>
+                        <li>Restart the Wazuh manager:
+                            <pre><code class="language-bash">sudo systemctl restart wazuh-manager</code></pre>
+                        </li>
+                    </ol>
+
+                    <h3>Step 6: Configure Wazuh Agents</h3>
+                    <h4>Windows Agents (90 Endpoints):</h4>
+                    <ul>
+                        <li><strong>Sysmon Setup:</strong>
+                            <ul>
+                                <li>Install Sysmon with its default configuration on all Windows agents.</li>
+                                <li>Configure the Wazuh agent to collect Sysmon logs by editing <code>C:\Program Files (x86)\ossec-agent\ossec.conf</code>:
+                                    <pre><code class="language-xml">&lt;localfile&gt;
+    &lt;log_format&gt;eventchannel&lt;/log_format&gt; &lt;!-- Corrected format --&gt;
+    &lt;location&gt;Microsoft-Windows-Sysmon/Operational&lt;/location&gt;
+&lt;/localfile&gt;</code></pre>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <h4>Linux Agents (10 Ubuntu Endpoints):</h4>
+                    <ul>
+                        <li>Configure the Wazuh agent to monitor key logs. Edit <code>/var/ossec/etc/ossec.conf</code> on each Linux agent:
+                            <pre><code class="language-xml">&lt;localfile&gt;
+    &lt;log_format&gt;syslog&lt;/log_format&gt;
+    &lt;location&gt;/var/log/auth.log&lt;/location&gt;
+&lt;/localfile&gt;
+&lt;localfile&gt;
+    &lt;log_format&gt;syslog&lt;/log_format&gt;
+    &lt;location&gt;/var/log/syslog&lt;/location&gt;
+&lt;/localfile&gt;</code></pre>
+                        </li>
+                    </ul>
+
+                    <h3>Step 7: Deploy Wazuh Agents</h3>
+                    <h4>Windows Agents (via Group Policy):</h4>
+                    <ol>
+                        <li>Download the Wazuh agent installer (<code>wazuh-agent.msi</code>) from the Wazuh website.</li>
+                        <li>Create a Group Policy Object (GPO) in Active Directory:
+                            <ul>
+                                <li>Open Group Policy Management.</li>
+                                <li>Create a new GPO and link it to the appropriate OU.</li>
+                                <li>Edit the GPO: Computer Configuration > Policies > Software Settings > Software Installation.</li>
+                                <li>Add <code>wazuh-agent.msi</code> and configure it with the manager’s FQDN:
+                                    <pre><code class="language-cmd">msiexec /i wazuh-agent.msi /q WAZUH_MANAGER="wazuh.example.com" WAZUH_REGISTRATION_SERVER="wazuh.example.com"</code></pre>
+                                </li>
+                            </ul>
+                        </li>
+                        <li>Ensure agents are connected to the VPN before deployment.</li>
+                    </ol>
+                    <h4>Linux Agents (via Scripting):</h4>
+                    <p><strong>Why:</strong> Scripting is cleaner and faster for 10 Ubuntu agents compared to manual installation.</p>
+                    <p><strong>Suggested Tool:</strong> Ansible (automation simplifies deployment).</p>
+                    <ol>
+                        <li>Install Ansible on a control node (e.g., your admin workstation):
+                            <pre><code class="language-bash">sudo apt install ansible -y</code></pre>
+                        </li>
+                        <li>Create an inventory file (<code>hosts</code>) with your 10 Ubuntu agent IPs:
+                            <pre><code class="language-text">[linux_agents]
+192.168.1.101
+192.168.1.102
+# ... add all 10 IPs</code></pre>
+                        </li>
+                        <li>Create an Ansible playbook (<code>deploy_wazuh.yml</code>):
+                            <pre><code class="language-yaml">- hosts: linux_agents
+  become: yes
+  tasks:
+    - name: Install Wazuh agent # Note: Ensure correct agent version/URL
+      apt:
+        deb: https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_4.7.0-1_amd64.deb # Update URL as needed
+    - name: Configure Wazuh manager address
+      lineinfile:
+        path: /var/ossec/etc/ossec.conf
+        regexp: '&lt;address&gt;.*&lt;/address&gt;'
+        line: '    &lt;address&gt;wazuh.example.com&lt;/address&gt;'
+    - name: Restart Wazuh agent
+      service:
+        name: wazuh-agent
+        state: restarted</code></pre>
+                        </li>
+                        <li>Run the playbook:
+                            <pre><code class="language-bash">ansible-playbook -i hosts deploy_wazuh.yml</code></pre>
+                        </li>
+                    </ol>
+
+
+                    <h3>Step 8: Secure the Wazuh Manager</h3>
+                    <p><strong>Why:</strong> Critical for an internet-facing server.</p>
+                    <h4>Action:</h4>
+                    <ol>
+                        <li><strong>Firewall Configuration:</strong>
+                            <ul>
+                                <li>Restrict access to essential ports:
+                                    <pre><code class="language-bash">sudo ufw allow 1514/udp # Agent communication (check if TCP also needed: 1514/tcp)
+sudo ufw allow 443/tcp # Dashboard via Nginx
+sudo ufw allow 1515/tcp # Agent registration (only if needed, restrict source IP)
+# Allow SSH only from trusted IPs:
+# sudo ufw allow from YOUR_VPN_SUBNET_OR_IP to any port 22 proto tcp
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw enable</code></pre>
+                                </li>
+                            </ul>
+                        </li>
+                        <li><strong>HTTPS for Dashboard:</strong> Ensure Nginx uses SSL (configured in Step 3).</li>
+                        <li><strong>Agent Authentication:</strong> Use Wazuh’s agent key authentication. Avoid exposing the authd service (port 1515) to the internet unless secured with a VPN or IP whitelist.</li>
+                    </ol>
+
+
+                    <h3>Additional Considerations</h3>
+                    <ul>
+                        <li><strong>Resource Monitoring:</strong> Post-deployment, monitor CPU, RAM, and disk usage (e.g., with <code>htop</code> or <code>df -h</code>). Upgrade to 16GB RAM if bottlenecks occur.</li>
+                        <li><strong>Log Management:</strong> Configure log rotation and retention in <code>/var/ossec/etc/ossec.conf</code> to prevent disk space issues:
+                            <pre><code class="language-xml">&lt;logall&gt;yes&lt;/logall&gt;
+&lt;logall_json&gt;yes&lt;/logall_json&gt;</code></pre>
+                            </li>
+                        <li><strong>Backups:</strong> Regularly back up <code>/var/ossec/etc/</code> and agent keys (<code>/var/ossec/etc/client.keys</code>).</li>
+                        <li><strong>Active Response Testing:</strong> Test ransomware active response scripts in a lab environment before production deployment.</li>
+                        <li><strong>VPN Connectivity:</strong> Ensure all agents are on the VPN before registering with the manager to avoid connection issues.</li>
+                    </ul>
+
+                    <h3>Conclusion</h3>
+                    <p>This guide provides a comprehensive, tailored approach to deploying your Wazuh manager on Ubuntu 24.04 LTS. You’ll have a secure, internet-facing setup with custom ransomware detection, Sysmon integration, and efficient agent deployment via Group Policy and scripting.</p>
+                </section>
+            </div>
+
+            <div id="option2-content" class="instruction-content hidden">
+                 <section id="option2">
+                    <h2>Option 2: Efficient Wazuh Manager Deployment on Ubuntu 24.04 LTS</h2>
+                    <p>Here is the procedure to deploy your Wazuh manager efficiently on Ubuntu 24.04 LTS, configured for your environment:</p>
+                    <h3>Phase 1: Server Preparation and Wazuh Installation</h3>
+                    <h4>Prepare Ubuntu 24.04 LTS Server:</h4>
+                    <ul>
+                        <li>Ensure the VM meets the specs (4 cores, 8GB RAM, 100GB Disk). <strong>Note:</strong> While 100GB HDD is specified, an SSD would significantly improve the performance of the Wazuh Indexer component.</li>
+                        <li>Assign the static IP address reachable via your company VPN.</li>
+                        <li>Update the system:
+                            <pre><code class="language-bash">sudo apt update && sudo apt upgrade -y</code></pre>
+                        </li>
+                        <li>Install necessary prerequisites:
+                            <pre><code class="language-bash">sudo apt install -y curl apt-transport-https gnupg wget libcap2-bin software-properties-common lsb-release vim unzip</code></pre>
+                        </li>
+                        <li>Ensure the hostname resolves correctly if needed, although we'll rely on the FQDN primarily.</li>
+                    </ul>
+
+                    <h4>Run Wazuh Assisted Installation:</h4>
+                    <ul>
+                        <li>This script bundles the Wazuh Server, Wazuh Indexer, and Wazuh Dashboard.</li>
+                        <li>Download the script (<strong>Note:</strong> Check Wazuh documentation for the absolute latest stable version number):
+                            <pre><code class="language-bash">curl -sO https://packages.wazuh.com/4.9/wazuh-install.sh # Replace 4.9 if needed</code></pre>
+                        </li>
+                        <li>Run the installation script. Using <code>--all-in-one</code> is simplest for your setup:
+                            <pre><code class="language-bash">sudo bash wazuh-install.sh --all-in-one</code></pre>
+                        </li>
+                        <li><strong>CRITICAL:</strong> During the installation, the script will generate passwords for various components (admin user, indexer certificates, etc.). <strong>Save these passwords securely</strong> in a password manager or secure location. You'll need the <code>admin</code> password immediately.</li>
+                    </ul>
+
+                    <h4>Initial Login and Password Change:</h4>
+                    <ul>
+                        <li>Once the installation completes, it will output the access URL (usually <code>https://&lt;your-server-ip&gt;</code>) and the initial <code>admin</code> password.</li>
+                        <li>Access the Wazuh Dashboard URL in your browser. You might get a certificate warning initially if using the default self-signed certs – proceed past it for now.</li>
+                        <li>Log in with username <code>admin</code> and the generated password.</li>
+                        <li><strong>Immediately</strong> change the default <code>admin</code> password via the dashboard's security settings (Security -> Internal Users -> admin -> Edit -> Update password).</li>
+                    </ul>
+
+                    <h3>Phase 2: Security Hardening (Firewall & Reverse Proxy)</h3>
+                    <h4>Configure Host Firewall (ufw):</h4>
+                    <ul>
+                        <li><strong>Goal:</strong> Allow only necessary traffic, primarily from your VPN network.</li>
+                        <li>Replace <code>YOUR_VPN_SUBNET</code> (e.g., <code>10.8.0.0/16</code>) and <code>YOUR_ADMIN_IP</code> with your actual VPN client IP range and your administrative workstation IP/subnet.</li>
+                        <li>Allow SSH only from trusted admin IPs:
+                            <pre><code class="language-bash">sudo ufw allow from YOUR_ADMIN_IP to any port 22 proto tcp comment 'Allow SSH from Admin'</code></pre>
+                        </li>
+                        <li>Allow Wazuh agent registration/communication from the VPN subnet:
+                            <pre><code class="language-bash">sudo ufw allow from YOUR_VPN_SUBNET to any port 1514 comment 'Allow Wazuh Agent Traffic (1514 UDP/TCP)'
+sudo ufw allow from YOUR_VPN_SUBNET to any port 1515 proto tcp comment 'Allow Wazuh Agent Enrollment (1515 TCP)'</code></pre>
+                        </li>
+                        <li>Allow HTTPS for the Dashboard/API via Nginx (we'll set this up next) from the VPN and Admin IPs:
+                            <pre><code class="language-bash">sudo ufw allow from YOUR_VPN_SUBNET to any port 443 proto tcp comment 'Allow Nginx HTTPS from VPN'
+sudo ufw allow from YOUR_ADMIN_IP to any port 443 proto tcp comment 'Allow Nginx HTTPS from Admin'</code></pre>
+                        </li>
+                        <li>Deny other traffic by default and enable <code>ufw</code>:
+                            <pre><code class="language-bash">sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw enable
+sudo ufw status verbose # Verify rules</code></pre>
+                        </li>
+                    </ul>
+
+                    <h4>Set Up Nginx Reverse Proxy and TLS:</h4>
+                    <ul>
+                        <li>Assign your chosen FQDN (e.g., <code>wazuh.yourcompany.com</code>) via DNS to point to the Wazuh server's static IP.</li>
+                        <li>Install Nginx:
+                            <pre><code class="language-bash">sudo apt install -y nginx</code></pre>
+                        </li>
+                        <li><strong>Obtain a TLS Certificate:</strong>
+                            <ul>
+                                <li><strong>Option A (Recommended if FQDN is public):</strong> Use Let's Encrypt with <code>certbot</code>. You might need the DNS challenge if port 80 isn't open externally.
+                                    <pre><code class="language-bash">sudo apt install certbot python3-certbot-nginx -y
+# If using HTTP challenge (requires port 80 open temporarily or clever Nginx setup)
+# sudo certbot --nginx -d wazuh.yourcompany.com
+# If using DNS challenge (follow prompts for your DNS provider)
+# sudo certbot certonly --dns-yourdnsprovider -d wazuh.yourcompany.com</code></pre>
+                                </li>
+                                <li><strong>Option B (Internal FQDN):</strong> Use certificates from your internal Certificate Authority (CA). Place the certificate and key file (e.g., in <code>/etc/nginx/ssl/</code>).</li>
+                                <li><strong>Option C (Less Secure):</strong> Use a self-signed certificate (not recommended for production).</li>
+                            </ul>
+                        </li>
+                        <li><strong>Configure Nginx:</strong>
+                            <ul>
+                                <li>Create a new Nginx configuration file for Wazuh:
+                                    <pre><code class="language-bash">sudo nano /etc/nginx/sites-available/wazuh-dashboard</code></pre>
+                                </li>
+                                <li>Paste and adapt the following configuration. Replace <code>wazuh.yourcompany.com</code> with your FQDN and update the <code>ssl_certificate</code> and <code>ssl_certificate_key</code> paths based on how you obtained your certificate (Certbot paths are typically under <code>/etc/letsencrypt/live/</code>).
+                                    <pre><code class="language-nginx">server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+
+    server_name wazuh.yourcompany.com; # Your FQDN
+
+    # SSL Configuration - UPDATE PATHS
+    ssl_certificate /etc/letsencrypt/live/wazuh.yourcompany.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/wazuh.yourcompany.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # Add Strong Security Headers (Optional but recommended)
+    # add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload";
+    # add_header X-Frame-Options DENY;
+    # add_header X-Content-Type-Options nosniff;
+    # add_header X-XSS-Protection "1; mode=block";
+    # add_header Referrer-Policy "no-referrer";
+
+    # Increase buffer size for Wazuh dashboard potentially large requests
+    proxy_buffers 8 16k;
+    proxy_buffer_size 32k;
+
+    location / {
+        proxy_pass https://127.0.0.1:443; # Default Wazuh Dashboard port internally
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_redirect off;
+    }
+}</code></pre>
+                                </li>
+                            </ul>
+                        </li>
+                        <li>Enable the site and test the configuration:
+                            <pre><code class="language-bash">sudo ln -s /etc/nginx/sites-available/wazuh-dashboard /etc/nginx/sites-enabled/
+sudo rm /etc/nginx/sites-enabled/default # Disable default site if it exists
+sudo nginx -t # Test configuration
+sudo systemctl restart nginx # Apply changes</code></pre>
+                        </li>
+                        <li>Now, you should be able to access the Wazuh Dashboard securely via <code>https://wazuh.yourcompany.com</code>.</li>
+                    </ul>
+
+                    <h3>Phase 3: Wazuh Configuration (Rules & Active Response)</h3>
+                    <h4>Add Custom Ransomware Rules:</h4>
+                    <ul>
+                        <li>Wazuh rules are in XML format, located in <code>/var/ossec/etc/rules/</code>.</li>
+                        <li>Create a new file for your custom rules:
+                            <pre><code class="language-bash">sudo nano /var/ossec/etc/rules/local_rules.xml</code></pre>
+                        </li>
+                        <li>Add your rules within a <code>&lt;group&gt;</code> tag. Here's a <strong>conceptual template</strong>. You'll need to replace the logic (<code>&lt;field&gt;</code>, <code>&lt;match&gt;</code>, <code>&lt;decoded_as&gt;</code>, etc.) based on the specific Indicators of Compromise (IOCs) for Lynx, Sosano, and INC ransomware (e.g., specific file extensions created, ransom note names, processes executed, registry keys modified detected via Sysmon).
+                            <pre><code class="language-xml">&lt;group name="local,windows,ransomware,"&gt;
+
+    &lt;!-- Example Rule for a suspicious process name --&gt;
+    &lt;rule id="100100" level="12"&gt;
+        &lt;if_sid&gt;61600&lt;/if_sid&gt; &lt;!-- Example Sysmon ProcessCreate SID --&gt;
+        &lt;field name="win.eventdata.image" type="pcre2"&gt;(?i)suspicious_lynx_process\.exe&lt;/field&gt;
+        &lt;description&gt;Potential Lynx Ransomware Activity Detected: Suspicious process launched.&lt;/description&gt;
+        &lt;mitre&gt;
+            &lt;id&gt;T1486&lt;/id&gt;
+        &lt;/mitre&gt;
+        &lt;group&gt;ransomware_detection,lynx_ransomware,&lt;/group&gt;
+    &lt;/rule&gt;
+
+    &lt;!-- Example Rule for a suspicious registry key modification --&gt;
+    &lt;rule id="100101" level="12"&gt;
+        &lt;if_sid&gt;61613&lt;/if_sid&gt; &lt;!-- Example Sysmon RegistryEvent SID --&gt;
+        &lt;field name="win.eventdata.targetObject" type="pcre2"&gt;\\sosano_ransom_key&lt;/field&gt;
+        &lt;description&gt;Potential Sosano Ransomware Activity Detected: Suspicious registry modification.&lt;/description&gt;
+        &lt;mitre&gt;
+            &lt;id&gt;T1486&lt;/id&gt;
+        &lt;/mitre&gt;
+        &lt;group&gt;ransomware_detection,sosano_ransomware,&lt;/group&gt;
+    &lt;/rule&gt;
+
+    &lt;!-- Example Rule for a specific file extension creation --&gt;
+    &lt;rule id="100102" level="12"&gt;
+        &lt;if_sid&gt;61611&lt;/if_sid&gt; &lt;!-- Example Sysmon FileCreate SID --&gt;
+        &lt;field name="win.eventdata.targetFilename" type="pcre2"&gt;\.(INC)$&lt;/field&gt;
+        &lt;description&gt;Potential INC Ransomware Activity Detected: File with .INC extension created.&lt;/description&gt;
+        &lt;mitre&gt;
+            &lt;id&gt;T1486&lt;/id&gt;
+        &lt;/mitre&gt;
+        &lt;group&gt;ransomware_detection,inc_ransomware,&lt;/group&gt;
+    &lt;/rule&gt;
+
+&lt;/group&gt;</code></pre>
+                        </li>
+                        <li><strong>Note:</strong> Rule IDs 100000-120000 are reserved for local user rules. Choose unique IDs. The <code>level</code> determines severity (12+ often trigger alerts). <code>if_sid</code> links it to pre-existing decoder groups (like Sysmon events). Developing effective rules requires analyzing logs and threat intel.</li>
+                    </ul>
+
+                    <h4>Configure Active Response (AR):</h4>
+                    <ul>
+                        <li><strong>CAUTION:</strong> Active Response executes scripts based on alerts. Test thoroughly. Incorrect scripts can cause serious disruption (e.g., locking out legitimate users/systems).</li>
+                        <li>Define AR commands in <code>/var/ossec/etc/ossec.conf</code>. Add or uncomment the <code>&lt;command&gt;</code> blocks within <code>&lt;ossec_config&gt;</code>:
+                            <pre><code class="language-xml">&lt;command&gt;
+    &lt;name&gt;isolate-host&lt;/name&gt;
+    &lt;executable&gt;isolate-host.sh&lt;/executable&gt;
+    &lt;expect&gt;srcip&lt;/expect&gt; &lt;!-- Or 'agentip' depending on context --&gt;
+    &lt;timeout_allowed&gt;no&lt;/timeout_allowed&gt;
+&lt;/command&gt;</code></pre>
+                        </li>
+                        <li>Create the corresponding AR script(s) in <code>/var/ossec/active-response/bin/</code>. Example <code>isolate-host.sh</code> (<strong>very basic, needs proper logic for your environment</strong>, e.g., using firewall API, EDR API, or Windows Firewall commands pushed remotely):
+                            <pre><code class="language-bash">#!/bin/bash
+# Simple example - logs action, real script would interact with firewall/EDR
+ACTION=$1
+USER=$2
+SRCIP=$3 # Received from &lt;expect&gt;srcip&lt;/expect&gt;
+
+LOG_FILE="/var/ossec/logs/active-responses.log"
+
+if [ "$ACTION" == "add" ]; then
+    echo "$(date) Automated response: Blocking IP $SRCIP due to high-severity alert." >> $LOG_FILE
+    # Add actual blocking command here (e.g., iptables, firewall API call)
+fi
+
+exit 0</code></pre>
+                        </li>
+                        <li>Make the script executable: <code>sudo chmod 750 /var/ossec/active-response/bin/isolate-host.sh</code> and <code>sudo chown root:wazuh /var/ossec/active-response/bin/isolate-host.sh</code>.</li>
+                        <li>Link AR command to your custom rules in <code>/var/ossec/etc/ossec.conf</code> within <code>&lt;ossec_config&gt;</code>:
+                            <pre><code class="language-xml">&lt;active-response&gt;
+    &lt;command&gt;isolate-host&lt;/command&gt;
+    &lt;location&gt;local&lt;/location&gt; &lt;!-- Runs on manager --&gt;
+    &lt;rules_id&gt;100100,100101,100102&lt;/rules_id&gt;
+    &lt;timeout&gt;300&lt;/timeout&gt; &lt;!-- Example: block for 5 minutes --&gt;
+&lt;/active-response&gt;
+
+&lt;!-- Ensure Active Response is generally enabled --&gt;
+&lt;active-response&gt;
+    &lt;disabled&gt;no&lt;/disabled&gt;
+&lt;/active-response&gt;</code></pre>
+                        </li>
+                    </ul>
+                    <h4>Validate and Restart Wazuh Manager:</h4>
+                    <pre><code class="language-bash">sudo /var/ossec/bin/wazuh-control check-configuration
+sudo /var/ossec/bin/wazuh-control restart</code></pre>
+
+                    <h3>Phase 4: Agent Deployment</h3>
+                    <h4>Deploy Sysmon (Windows):</h4>
+                    <ul>
+                        <li>Download Sysmon from Microsoft Sysinternals.</li>
+                        <li>Download a standard Sysmon configuration file (e.g., from SwiftOnSecurity's popular repo or use a basic default).</li>
+                        <li>Use GPO (or scripting) to:
+                            <ul>
+                                <li>Copy <code>Sysmon.exe</code> and your <code>config.xml</code> to the clients.</li>
+                                <li>Install/Update Sysmon: <code>Sysmon.exe -accepteula -i config.xml</code></li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <h4>Deploy Wazuh Agent (Windows - GPO Method):</h4>
+                    <ul>
+                        <li>Download the latest Wazuh Agent MSI installer from the Wazuh documentation/repository.</li>
+                        <li>Place the MSI on a network share accessible by domain computers.</li>
+                        <li>Create a new GPO linked to the OU containing your target Windows computers.</li>
+                        <li>Go to Computer Configuration -> Policies -> Software Settings -> Software installation.</li>
+                        <li>Right-click -> New -> Package... -> Select the Wazuh Agent MSI from the network share.</li>
+                        <li>Choose 'Assigned' deployment method.</li>
+                        <li><strong>Crucially, configure deployment options to include the manager address:</strong> This often involves creating a transform file (MST) using Orca, or checking if the specific MSI version supports command-line properties directly within the GPO software installation object. The key setting to embed is <code>WAZUH_MANAGER='wazuh.yourcompany.com'</code>. Also consider <code>WAZUH_REGISTRATION_SERVER</code> if different or using registration service.</li>
+                        <li><strong>Agent Configuration for Sysmon:</strong> Ensure the agent's <code>ossec.conf</code> (typically <code>C:\Program Files (x86)\ossec-agent\ossec.conf</code>) includes the Sysmon channel block. The default MSI installer usually includes this, but verify:
+                            <pre><code class="language-xml">&lt;localfile&gt;
+    &lt;location&gt;Microsoft-Windows-Sysmon/Operational&lt;/location&gt;
+    &lt;log_format&gt;eventchannel&lt;/log_format&gt;
+&lt;/localfile&gt;</code></pre>
+                        </li>
+                        <li>The GPO will install the agent on the next reboot or <code>gpupdate /force</code>.</li>
+                    </ul>
+
+                    <h4>Deploy Wazuh Agent (Windows - Scripting Alternative - PowerShell):</h4>
+                    <ul>
+                        <li>Create a PowerShell script (<code>deploy_wazuh.ps1</code>).</li>
+                        <li>This script could:
+                            <ul>
+                                <li>Check if Sysmon is installed; if not, download/copy and install it (<code>Sysmon.exe -accepteula -i config.xml</code>).</li>
+                                <li>Check if Wazuh agent is installed; if not, download/copy the MSI.</li>
+                                <li>Run the MSI installer silently, providing the manager FQDN:
+                                    <pre><code class="language-powershell">$ManagerFQDN = "wazuh.yourcompany.com"
+$MsiPath = "C:\path\to\wazuh-agent.msi" # Or download path
+Start-Process msiexec.exe -ArgumentList "/i `"$MsiPath`" /q WAZUH_MANAGER='$ManagerFQDN'" -Wait</code></pre>
+                                </li>
+                                <li>Optionally, verify/modify the agent's <code>ossec.conf</code> to ensure Sysmon monitoring is enabled.</li>
+                                <li>Ensure the <code>WazuhSvc</code> service is started and set to automatic.</li>
+                            </ul>
+                        </li>
+                        <li>Deploy this script via GPO (as a startup script), SCCM, Intune, or another deployment tool.</li>
+                    </ul>
+
+                    <h4>Deploy Wazuh Agent (Linux - Ubuntu):</h4>
+                    <ul>
+                        <li>On each Linux client:
+                            <pre><code class="language-bash"># Add Wazuh repository GPG key and repo details (check Wazuh docs for latest URLs/keys)
+curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo gpg --dearmor -o /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee /etc/apt/sources.list.d/wazuh.list
+
+# Install the agent
+sudo apt update
+sudo apt install wazuh-agent
+
+# Configure the manager address (replace MANAGER_IP or existing address)
+sudo sed -i "s/&lt;address&gt;.*&lt;\/address&gt;/    &lt;address&gt;wazuh.yourcompany.com&lt;\/address&gt;/" /var/ossec/etc/ossec.conf
+
+# Enable and start the service
+sudo systemctl daemon-reload
+sudo systemctl enable wazuh-agent
+sudo systemctl start wazuh-agent</code></pre>
+                        </li>
+                        <li>Review the default monitored files in the Linux agent's <code>/var/ossec/etc/ossec.conf</code> and add others if necessary (e.g., specific application logs).</li>
+                    </ul>
+
+                    <h3>Phase 5: Verification and Monitoring</h3>
+                    <ul>
+                        <li><strong>Verify Agent Connection:</strong> In the Wazuh Dashboard, navigate to Modules -> Agents. Agents should appear here as they connect and register (may take a few minutes). Check their status is 'Active'.</li>
+                        <li><strong>Test Rules and AR:</strong> Carefully simulate conditions that should trigger your custom rules (e.g., create a dummy file with a <code>.INC</code> extension on a test machine). Check the Wazuh Dashboard for alerts. Verify that the Active Response script executed as expected by checking its log file (<code>/var/ossec/logs/active-responses.log</code> on the manager if <code>location=local</code>).</li>
+                        <li><strong>Monitor:</strong> Regularly check the Wazuh dashboard for alerts, monitor agent statuses, and review Wazuh manager logs (<code>/var/ossec/logs/ossec.log</code>) for any errors.</li>
+                    </ul>
+                    <p>This procedure provides a robust starting point. Remember to adapt the specific rule logic, AR scripts, and deployment details precisely to your environment.</p>
+                </section>
+            </div>
+        </div></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
